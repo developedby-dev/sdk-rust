@@ -1,0 +1,50 @@
+[package]
+name = "bydev"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "bydev 라이선스 API 공식 Rust SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인"
+license = "MIT OR Apache-2.0"
+homepage = "https://developedby.dev/sell/docs"
+repository = "https://github.com/developedby-dev/sdk-rust"
+readme = "README.md"
+keywords = ["bydev", "license", "licensing", "oauth", "device-flow"]
+categories = ["api-bindings", "authentication"]
+# 출시 때 뺀다(docs/runbooks/sdk-release.md)
+publish = false
+
+[workspace]
+members = [".", "harness"]
+
+[features]
+default = ["rustls"]
+# TLS — 하나는 켜야 https가 된다. rustls(기본 — 순수 Rust TLS, 암호는 ring) · native-tls(운영체제 TLS — SChannel · Security.framework · OpenSSL)
+rustls = ["ureq/rustls"]
+native-tls = ["ureq/native-tls"]
+# 서버 인증서를 운영체제 신뢰 저장소로 확인한다(사내 프록시의 루트 인증서) — rustls와 함께
+platform-verifier = ["ureq/platform-verifier"]
+# 운영체제 보안 저장소(macOS 키체인 · Windows 자격 증명 관리자 · Linux Secret Service) — KeyringCredentialStore
+keyring = ["dep:keyring"]
+
+[dependencies]
+base64 = "0.23.1"
+ed25519-dalek = { version = "3.0.0", default-features = false }
+getrandom = "0.4.3"
+hmac = "0.13.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.0"
+ureq = { version = "3.4.2", default-features = false }
+
+# keyring은 운영체제마다 다른 저장소 구현을 켠다 — Linux는 순수 Rust(zbus · async-io, libdbus 없음)
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6.3", optional = true, features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6.3", optional = true, features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6.3", optional = true, features = ["async-secret-service", "crypto-rust", "async-io"] }
+
+[lints.rust]
+unsafe_code = "forbid"

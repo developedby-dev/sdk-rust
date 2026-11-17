@@ -1,0 +1,11 @@
+[package]
+name = "bydev-conformance-harness"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+base64 = "0.23.1"
+bydev = { path = ".." }
+serde = "1.0.229"
+serde_json = "1.0.154"

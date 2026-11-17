@@ -1,0 +1,57 @@
+# 출시 — 공개 거울 developedby-dev/sdk-rust (ADR-0050). 원천은 모노레포 sdks/rust/.github/workflows/release.yml — 거울에서 고치지 않는다.
+# 판 태그(v1.0.0)를 밀면 시험하고, 환경 release에서 대표가 승인한 뒤 crates.io 신뢰 게시(OIDC — 30분 토큰)로 올린다. 올린 .crate에는 GitHub 증명을 남긴다.
+# 첫 판(1.0.0)은 크레이트가 있어야 신뢰 게시를 걸 수 있어 손으로 올린다(ADR-0050 6절) — 그 뒤 크레이트 설정에서 이 워크플로를 신뢰 게시자로.
+# C 거울(sdk-c)이 crates.io의 이 크레이트를 받으므로 C보다 먼저 태그한다. 손으로 돌리면(workflow_dispatch) 시험 · 꾸리기만 한다
+name: release
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install stable --profile minimal --component clippy,rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - run: cargo package --allow-dirty
+  publish:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: 태그와 꾸러미 판이 같은지
+        env:
+          TAG: ${{ github.ref_name }}
+        run: sed -n '/^\[package\]/,/^\[/p' Cargo.toml | grep -qx "version = \"${TAG#v}\""
+      - run: rustup toolchain install stable --profile minimal
+      - run: cargo package
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: target/package/*.crate
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+        id: auth
+      - name: 게시 (신뢰 게시)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish --no-verify
