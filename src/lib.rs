@@ -1,4 +1,4 @@
-//! bydev 라이선스 API의 공식 Rust SDK.
+//! 데브 라이선스 API의 공식 Rust SDK.
 //!
 //! 디바이스 로그인 · refresh_token 회전 · 세션 리스(하트비트) · licenseToken 검증 · 업데이트 확인을 `sdks/spec` 동작 명세대로 한다.
 //! API는 블로킹이다(스레드 · 타이머) — 비동기 앱(Tauri 등)은 `spawn_blocking`에서 부른다. 이용 가능 여부를 참/거짓 하나로 알리지 않는다 —

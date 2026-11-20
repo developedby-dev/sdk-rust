@@ -6,13 +6,12 @@ C/C++ SDK는 이 크레이트 위에 C ABI를 얹어 만든 것입니다.
 
 | 지원 | 버전 |
 |---|---|
-| 동작 명세 | 1.1.0 |
+| 동작 명세 | 1.1.1 |
 | API | v1 |
 | Rust | 1.85 이상(에디션 2024), Windows, macOS, Linux |
 
-크레이트 이름은 `bydev`입니다. crates.io에는 서비스 오픈을 준비하면서 업로드합니다.
-
-지금은 이 저장소 안에서만 쓸 수 있습니다(`publish = false`).
+크레이트 이름은 `bydev`입니다. 지금 crates.io에 있는 0.x 판은 이름을 먼저 등록하려고 낸 미리보기입니다. 1.0.0은 서비스 오픈과 함께 내며, 그 전에는
+호환되지 않는 변경이 있을 수 있습니다. 판매하는 앱에는 1.0.0 이상을 써 주세요.
 
 **블로킹 API입니다.** 스레드와 타이머로 동작하므로 tokio 같은 비동기 런타임이 필요 없습니다.
 
@@ -114,6 +113,7 @@ let claims = verifier.verify_access_token(token)?;
 ## 출처 확인
 
 이 꾸러미는 공개 저장소 `developedby-dev/sdk-rust`의 GitHub Actions가 판 태그에서 짓고 올립니다. crates.io에 올린 `.crate`에는 GitHub 출처 증명이 있습니다. 받은 파일을 `gh attestation verify <파일> --repo developedby-dev/sdk-rust`로 확인할 수 있습니다.
+첫 판 0.1.0만은 예외입니다. crates.io의 신뢰 게시는 크레이트가 생긴 뒤에만 걸 수 있어 손으로 올렸고, 증명이 없습니다.
 
 ## 개발
 

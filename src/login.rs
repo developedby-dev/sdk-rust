@@ -60,7 +60,7 @@ impl LoginAttempt {
             done: Signal::new(),
             state: Mutex::new(State { interval: code.interval, settled: false, cancel: None, result: None }),
         });
-        Inner::schedule_poll(&inner);
+        Inner::schedule_poll(&inner, 0);
         Self {
             user_code: code.user_code,
             verification_uri: code.verification_uri,
@@ -106,8 +106,8 @@ impl Inner {
         lock(&self.state).settled
     }
 
-    /// 폴링 지터는 위로만(interval보다 이르면 SLOW_DOWN이다).
-    fn schedule_poll(self: &Arc<Self>) {
+    /// 폴링 지터는 위로만(interval보다 이르면 SLOW_DOWN이다). 429면 `retry_after_sec`보다 이르게 묻지 않는다(명세 5절).
+    fn schedule_poll(self: &Arc<Self>, retry_after_sec: u64) {
         let interval = lock(&self.state).interval;
         let ports = &self.api.ports;
         let delay = jittered(
@@ -115,7 +115,8 @@ impl Inner {
             Duration::from_secs(interval.max(0) as u64),
             rules::LOGIN_POLL_JITTER_MIN,
             rules::LOGIN_POLL_JITTER_MAX,
-        );
+        )
+        .max(Duration::from_secs(retry_after_sec));
         if ports.clock.now_ms() + delay.as_millis() as i64 > self.expires_at_ms {
             self.finish(Err(Error::new(codes::EXPIRED_TOKEN, "로그인 코드가 만료됐다 — 처음부터 다시")));
             return;
@@ -154,8 +155,15 @@ impl Inner {
             }
             Err(e) => e,
         };
-        if e.code() == codes::AUTHORIZATION_PENDING || e.is_transient() {
-            self.schedule_poll();
+        if e.code() == codes::AUTHORIZATION_PENDING {
+            self.schedule_poll(0);
+        } else if e.is_transient() {
+            let retry = if e.code() == codes::RATE_LIMITED || e.http_status() == Some(429) {
+                e.retry_after_sec().unwrap_or(0)
+            } else {
+                0
+            };
+            self.schedule_poll(retry);
         } else if e.code() == codes::SLOW_DOWN {
             {
                 let mut state = lock(&self.state);
@@ -164,7 +172,7 @@ impl Inner {
                     _ => state.interval += rules::LOGIN_SLOW_DOWN_INCREMENT_SEC,
                 }
             }
-            self.schedule_poll();
+            self.schedule_poll(0);
         } else {
             self.finish(Err(e));
         }

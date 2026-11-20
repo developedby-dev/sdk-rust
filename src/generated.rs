@@ -2,7 +2,7 @@
 // 원천: packages/contracts · sdks/spec/rules.json — 다시 만들기: pnpm --filter @bydev/sdk-codegen generate
 
 /// 이 SDK가 따르는 동작 명세 판.
-pub const SPEC_VERSION: &str = "1.1.0";
+pub const SPEC_VERSION: &str = "1.1.1";
 
 /// RFC 8628 디바이스 코드 grant_type.
 pub const DEVICE_CODE_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:device_code";
@@ -229,7 +229,7 @@ pub mod routes {
 
 /// 규칙 (sdks/spec/rules.json).
 pub mod rules {
-    pub const SPEC_VERSION: &str = "1.1.0";
+    pub const SPEC_VERSION: &str = "1.1.1";
     pub const API: &str = "v1";
     pub const USER_AGENT_LANGUAGES: &[&str] = &["typescript", "dotnet", "swift", "kotlin", "python", "go", "rust", "c"];
     pub const USER_AGENT_PATTERN: &str = "^bydev-(typescript|dotnet|swift|kotlin|python|go|rust|c)/[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?( .+)?$";

@@ -3,15 +3,14 @@ name = "bydev"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "bydev 라이선스 API 공식 Rust SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인"
+description = "데브 라이선스 API 공식 Rust SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인"
 license = "MIT OR Apache-2.0"
 homepage = "https://developedby.dev/sell/docs"
 repository = "https://github.com/developedby-dev/sdk-rust"
 readme = "README.md"
 keywords = ["bydev", "license", "licensing", "oauth", "device-flow"]
 categories = ["api-bindings", "authentication"]
-# 출시 때 뺀다(docs/runbooks/sdk-release.md)
-publish = false
+# 게시는 공개 거울의 release.yml이 한다(docs/runbooks/sdk-release.md) — 2026-11-19 이름을 0.x로 먼저 잡으며 `publish = false`를 뺐다
 
 [workspace]
 members = [".", "harness"]
