@@ -33,7 +33,13 @@ impl Os for RealOs {
     }
 
     fn exec(&self, program: &str, args: &[&str]) -> Result<String, BoxError> {
-        let out = Command::new(program).args(args).stdin(Stdio::null()).stderr(Stdio::null()).output()?;
+        let mut command = Command::new(program);
+        command.args(args).stdin(Stdio::null()).stderr(Stdio::null());
+        // Windows에서는 콘솔 창 없이 띄운다(CREATE_NO_WINDOW) — GUI 앱이 띄운 콘솔 명령은 창이 깜빡이고, 콘솔을 만들지 못하면
+        // 0xC0000142로 끝난다(명세 2절)
+        #[cfg(windows)]
+        std::os::windows::process::CommandExt::creation_flags(&mut command, 0x0800_0000);
+        let out = command.output()?;
         if !out.status.success() {
             return Err(format!("{program}가 {}로 끝났다", out.status).into());
         }
