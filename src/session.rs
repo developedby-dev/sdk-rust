@@ -163,6 +163,8 @@ struct State {
     heartbeat: Option<Cancel>,
     offline: Option<Cancel>,
     fallback: Option<String>,
+    /// 처음 계산한 지문 해시 — 한 실행 동안 다시 쓴다(명세 10절). 획득마다 다시 읽으면 일시적인 읽기 실패 하나로 다른 기기가 된다
+    fingerprint: Option<String>,
 }
 
 impl State {
@@ -195,6 +197,7 @@ impl Session {
             heartbeat: None,
             offline: None,
             fallback: None,
+            fingerprint: None,
         };
         Self { inner: Arc::new(Inner { api, tokens, verifier, device, app, state: Mutex::new(state) }) }
     }
@@ -346,6 +349,14 @@ impl Inner {
     }
 
     fn fingerprint_hash(&self) -> String {
+        if let Some(cached) = lock(&self.state).fingerprint.clone() {
+            return cached;
+        }
+        let computed = self.compute_fingerprint_hash();
+        lock(&self.state).fingerprint.get_or_insert(computed).clone() // 동시에 계산했으면 먼저 정한 값
+    }
+
+    fn compute_fingerprint_hash(&self) -> String {
         let ports = &self.api.ports;
         let source = ports.fingerprint.read().ok().flatten().map(|s| s.trim().to_owned()).filter(|s| !s.is_empty());
         let value = match source {

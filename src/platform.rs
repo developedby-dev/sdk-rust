@@ -19,6 +19,10 @@ pub(crate) trait Os: Send + Sync {
     fn write_file(&self, path: &Path, content: &str) -> Result<(), BoxError>;
     fn remove(&self, path: &Path) -> Result<(), BoxError>;
     fn new_id(&self) -> String;
+    /// 지문 출처를 다시 읽기 전 기다림(명세 10절) — 단위 시험은 기다리지 않게 바꿔 끼운다
+    fn sleep(&self, duration: std::time::Duration) {
+        std::thread::sleep(duration);
+    }
 }
 
 pub(crate) struct RealOs;
@@ -164,9 +168,15 @@ fn machine_id(os: &dyn Os) -> Option<String> {
 }
 
 impl FingerprintSource for OsFingerprintSource {
+    /// 실패하거나 빈 값이면 설치 ID로 물러나기 전에 다시 읽는다(명세 10절) — 일시적인 실패 하나로 같은 PC가 다른 기기가 되지 않게.
     fn read(&self) -> Result<Option<String>, BoxError> {
-        if let Some(value) = machine_id(self.os.as_ref()) {
-            return Ok(Some(value));
+        for attempt in 0..rules::FINGERPRINT_SOURCE_READ_ATTEMPTS.max(1) {
+            if attempt > 0 {
+                self.os.sleep(std::time::Duration::from_millis(rules::FINGERPRINT_SOURCE_READ_RETRY_DELAY_MS as u64));
+            }
+            if let Some(value) = machine_id(self.os.as_ref()) {
+                return Ok(Some(value));
+            }
         }
         let Some(file) = &self.install_id_file else { return Ok(None) };
         if let Some(existing) = self.os.read_file(file)?.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty()) {
@@ -283,6 +293,9 @@ mod tests {
         answers: HashMap<&'static str, Result<&'static str, &'static str>>,
         files: Mutex<HashMap<PathBuf, String>>,
         calls: Mutex<Vec<String>>,
+        /// 있으면 명령마다 차례로 꺼내 쓴다(마지막 값을 되풀이)
+        sequence: Mutex<Vec<Result<&'static str, &'static str>>>,
+        slept: Mutex<Vec<std::time::Duration>>,
     }
 
     impl FakeOs {
@@ -292,7 +305,15 @@ mod tests {
                 answers: answers.iter().cloned().collect(),
                 files: Mutex::new(HashMap::new()),
                 calls: Mutex::new(Vec::new()),
+                sequence: Mutex::new(Vec::new()),
+                slept: Mutex::new(Vec::new()),
             })
+        }
+
+        fn with_sequence(name: &'static str, sequence: &[Result<&'static str, &'static str>]) -> Arc<Self> {
+            let os = Self::new(name, &[]);
+            *os.sequence.lock().unwrap() = sequence.to_vec();
+            os
         }
     }
 
@@ -302,6 +323,12 @@ mod tests {
         }
         fn exec(&self, program: &str, args: &[&str]) -> Result<String, BoxError> {
             self.calls.lock().unwrap().push(format!("{program} {}", args.join(" ")));
+            let mut sequence = self.sequence.lock().unwrap();
+            if !sequence.is_empty() {
+                let answer = if sequence.len() > 1 { sequence.remove(0) } else { sequence[0] };
+                return answer.map(str::to_owned).map_err(Into::into);
+            }
+            drop(sequence);
             match self.answers.get(program) {
                 Some(Ok(out)) => Ok((*out).to_owned()),
                 Some(Err(e)) => Err((*e).into()),
@@ -322,6 +349,27 @@ mod tests {
         fn new_id(&self) -> String {
             "00000000-0000-4000-8000-00000000abcd".to_owned()
         }
+        fn sleep(&self, duration: std::time::Duration) {
+            self.slept.lock().unwrap().push(duration);
+        }
+    }
+
+    /// 1.2.0 — 2026-11-20 Windows에서 MachineGuid 읽기가 한 번 실패해 설치 ID로 등록됐다(같은 PC가 다른 기기)
+    #[test]
+    fn fingerprint_retries_before_install_id() {
+        let guid = "    MachineGuid    REG_SZ    3f1e9a2b-1111-2222-3333-444455556666\r\n";
+        let win = FakeOs::with_sequence("windows", &[Err("잠시 실패"), Ok(""), Ok(guid)]);
+        let source = OsFingerprintSource::with_os(Some(PathBuf::from("/app/install-id")), win.clone());
+        assert_eq!(source.read().unwrap().as_deref(), Some("3f1e9a2b-1111-2222-3333-444455556666"));
+        assert!(win.files.lock().unwrap().is_empty(), "설치 ID를 만들지 않는다");
+        assert_eq!(win.calls.lock().unwrap().len(), 3);
+        let delay = std::time::Duration::from_millis(rules::FINGERPRINT_SOURCE_READ_RETRY_DELAY_MS as u64);
+        assert_eq!(*win.slept.lock().unwrap(), vec![delay, delay]);
+
+        let failing = FakeOs::with_sequence("windows", &[Err("계속 실패")]);
+        let source = OsFingerprintSource::with_os(Some(PathBuf::from("/app/install-id")), failing.clone());
+        assert_eq!(source.read().unwrap().as_deref(), Some("00000000-0000-4000-8000-00000000abcd"));
+        assert_eq!(failing.calls.lock().unwrap().len() as i64, rules::FINGERPRINT_SOURCE_READ_ATTEMPTS);
     }
 
     #[test]

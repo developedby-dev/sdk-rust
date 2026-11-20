@@ -47,6 +47,8 @@ struct State {
     fail_load: bool,
     fail_save: bool,
     fail_clear: bool,
+    /// set fingerprint.fail — 지문 출처를 읽지 못한다(하네스 규약 2절)
+    fail_fingerprint: bool,
 }
 
 static STATE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State::default()));
@@ -216,6 +218,9 @@ struct ScenarioFingerprint(Option<String>);
 
 impl FingerprintSource for ScenarioFingerprint {
     fn read(&self) -> Result<Option<String>, BoxError> {
+        if state().fail_fingerprint {
+            return Ok(None);
+        }
         Ok(self.0.clone())
     }
 }
@@ -500,6 +505,7 @@ fn main() {
                         "storage.failLoad" => s.fail_load = value,
                         "storage.failSave" => s.fail_save = value,
                         "storage.failClear" => s.fail_clear = value,
+                        "fingerprint.fail" => s.fail_fingerprint = value,
                         _ => {}
                     }
                 }

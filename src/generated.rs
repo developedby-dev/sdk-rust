@@ -2,7 +2,7 @@
 // 원천: packages/contracts · sdks/spec/rules.json — 다시 만들기: pnpm --filter @bydev/sdk-codegen generate
 
 /// 이 SDK가 따르는 동작 명세 판.
-pub const SPEC_VERSION: &str = "1.1.1";
+pub const SPEC_VERSION: &str = "1.2.0";
 
 /// RFC 8628 디바이스 코드 grant_type.
 pub const DEVICE_CODE_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:device_code";
@@ -229,7 +229,7 @@ pub mod routes {
 
 /// 규칙 (sdks/spec/rules.json).
 pub mod rules {
-    pub const SPEC_VERSION: &str = "1.1.1";
+    pub const SPEC_VERSION: &str = "1.2.0";
     pub const API: &str = "v1";
     pub const USER_AGENT_LANGUAGES: &[&str] = &["typescript", "dotnet", "swift", "kotlin", "python", "go", "rust", "c"];
     pub const USER_AGENT_PATTERN: &str = "^bydev-(typescript|dotnet|swift|kotlin|python|go|rust|c)/[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?( .+)?$";
@@ -248,6 +248,8 @@ pub mod rules {
     pub const FINGERPRINT_ALGORITHM: &str = "SHA-256";
     pub const FINGERPRINT_SALT: &str = "bydev-device-v1";
     pub const FINGERPRINT_ENCODING: &str = "hex-lower";
+    pub const FINGERPRINT_SOURCE_READ_ATTEMPTS: i64 = 3;
+    pub const FINGERPRINT_SOURCE_READ_RETRY_DELAY_MS: i64 = 300;
     pub const STORAGE_SERVICE: &str = "dev.developedby.sdk";
     pub const STORAGE_RECORD_VERSION: i64 = 1;
     pub const TRANSIENT_CODES: &[&str] = &["NETWORK_ERROR", "RATE_LIMITED", "INTERNAL_ERROR"];
