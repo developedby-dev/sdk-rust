@@ -1,6 +1,6 @@
 [package]
 name = "bydev"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.85"
 description = "데브 라이선스 API 공식 Rust SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인"
